@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <!-- iOS optimized viewport to fill the screen safely -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Shopee Live Prototype</title>
   <style>
@@ -10,63 +9,82 @@
       margin: 0; 
       padding: 0; 
       box-sizing: border-box; 
-      /* Removes the blue tap flash on iOS */
       -webkit-tap-highlight-color: transparent; 
     }
     
-    body, html { 
-      width: 100%; 
-      height: 100%; 
-      overflow: hidden; 
-      background: #000; 
-    }
-    
-    /* Live Camera Feed at the Back */
-    #camera-feed {
-      position: absolute;
-      top: 0; 
+    /* Locks the viewport height and disables scrolling/bouncing completely */
+    html, body { 
+      position: fixed;
+      top: 0;
       left: 0;
       width: 100%; 
-      height: 100%;
+      height: 100%; 
+      height: -webkit-fill-available;
+      overflow: hidden; 
+      background: #000; 
+      touch-action: none;
+    }
+    
+    /* Camera Feed */
+    #camera-feed {
+      position: fixed;
+      top: 0; 
+      left: 0;
+      width: 100vw; 
+      height: 100vh;
+      height: 100dvh;
       object-fit: cover;
       z-index: 1;
     }
     
-    /* Transparent Figma Overlay at the Front */
+    /* Figma Overlay */
     #figma-overlay {
-      position: absolute;
+      position: fixed;
       top: 0; 
       left: 0;
-      width: 100%; 
-      height: 100%;
+      width: 100vw; 
+      height: 100vh;
+      height: 100dvh;
       border: none;
       z-index: 2;
-      pointer-events: auto;
     }
   </style>
 </head>
 <body>
 
-  <!-- Camera Video Layer (playsinline is required for iOS) -->
   <video id="camera-feed" autoplay playsinline muted></video>
 
-  <!-- Figma Embed Layer -->
-  <!-- Appended &hide-ui=1&scaling=scale-down-width to your URL -->
   <iframe id="figma-overlay" src="https://embed.figma.com/proto/LVKuB6KMVbMUCfOjmqgx8y/Untitled?node-id=18-335&scaling=min-zoom&content-scaling=fixed&page-id=0%3A1&starting-point-node-id=18%3A335&embed-host=share&hide-ui=1&scaling=scale-down-width" allowfullscreen></iframe>
 
   <script>
-    // Activate Mobile Front Camera
-    navigator.mediaDevices.getUserMedia({ 
-      video: { facingMode: "user" }, 
-      audio: false 
-    })
-    .then(stream => {
-      document.getElementById('camera-feed').srcObject = stream;
-    })
-    .catch(err => {
-      console.error("Camera access denied or unavailable: ", err);
-      alert("Please allow camera access in your browser settings to see the live preview.");
-    });
+    // Prevent iOS rubber-band scrolling / bouncing
+    document.addEventListener('touchmove', function(e) {
+      e.preventDefault();
+    }, { passive: false });
+
+    // Force iOS Safari to play camera stream upon metadata load
+    const video = document.getElementById('camera-feed');
+    
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: "user" }, 
+        audio: false 
+      })
+      .then(stream => {
+        video.srcObject = stream;
+        video.onloadedmetadata = () => {
+          video.play().catch(e => console.log("Play error:", e));
+        };
+      })
+      .catch(err => {
+        // Fallback for devices with strict camera constraint handling
+        navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+          .then(stream => {
+            video.srcObject = stream;
+            video.play();
+          });
+      });
+    }
   </script>
 
 </body>
